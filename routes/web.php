@@ -28,6 +28,8 @@ Route::prefix('administrationcomplexe')->middleware('auth')->name('administratio
 
 Route::prefix('administrationetablissement')->name('administrationetablissement.')->middleware('auth')->group(function () {
     Route::resource('formations', App\Http\Controllers\AdministrationEtablissement\FormationController::class);
-        Route::resource('espaces', \App\Http\Controllers\AdministrationEtablissement\EspacePedagogiqueController::class);
-
+    Route::resource('espaces', \App\Http\Controllers\AdministrationEtablissement\EspacePedagogiqueController::class);
+    Route::resource('anneesdeformations', \App\Http\Controllers\AdministrationEtablissement\AnneeDeFormationController::class);
+    Route::resource('groupes', \App\Http\Controllers\AdministrationEtablissement\GroupeController::class);
+    Route::resource('modules', \App\Http\Controllers\AdministrationEtablissement\ModuleController::class);
 });

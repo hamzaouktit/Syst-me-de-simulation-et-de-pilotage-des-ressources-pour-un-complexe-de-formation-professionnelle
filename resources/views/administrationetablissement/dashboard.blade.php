@@ -15,7 +15,16 @@
             📖 Gérer les Formations
         </a>
         
-        <a href="#" class="btn btn-secondary btn-lg">
+        <a href="{{ route('administrationetablissement.anneesdeformations.index') }}" class="btn btn-info btn-lg">
+            📅 Années des Formations
+        </a>
+
+        <a href="{{ route('administrationetablissement.groupes.index') }}" class="btn btn-info btn-lg">
+            👥 Gérer les Groupes
+        </a>
+
+        
+        <a href="{{ route('administrationetablissement.modules.index') }}" class="btn btn-secondary btn-lg">
             📘 Gérer les Modules
         </a>
         <a href="#" class="btn btn-success btn-lg">

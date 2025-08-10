@@ -77,7 +77,15 @@ class FormationController extends Controller
      */
     public function show(Formation $formation): View
     {
-        $formation->load(['etablissement', 'groupes', 'modules', 'anneesFormation']);
+        // Charger les relations avec des sous-relations pour optimiser les requêtes
+        $formation->load([
+            'etablissement',
+            'groupes' => function ($query) {
+                $query->with('anneeDeFormation');
+            },
+            'modules',
+            'anneesFormation'
+        ]);
 
         return view('administrationetablissement.formations.show', compact('formation'));
     }

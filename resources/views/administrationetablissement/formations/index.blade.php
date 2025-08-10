@@ -105,21 +105,26 @@
                                         <td>{{ $formation->etablissement->nom }}</td>
                                         <td>{{ $formation->created_at->format('d/m/Y') }}</td>
                                         <td class="text-center">
-                                            <div class="btn-group" role="group">
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <!-- Bouton Voir -->
                                                 <a href="{{ route('administrationetablissement.formations.show', $formation) }}" 
-                                                   class="btn btn-sm btn-info" title="Voir">
+                                                   class="btn btn-sm btn-info rounded-circle action-btn" title="Voir">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                
+                                                <!-- Bouton Modifier -->
                                                 <a href="{{ route('administrationetablissement.formations.edit', $formation) }}" 
-                                                   class="btn btn-sm btn-warning" title="Modifier">
+                                                   class="btn btn-sm btn-warning rounded-circle action-btn" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                
+                                                <!-- Bouton Supprimer -->
                                                 <form action="{{ route('administrationetablissement.formations.destroy', $formation) }}" 
                                                       method="POST" class="d-inline"
                                                       onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette formation ?')">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Supprimer">
+                                                    <button type="submit" class="btn btn-sm btn-danger rounded-circle action-btn" title="Supprimer">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </form>
@@ -147,4 +152,26 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Style personnalisé pour les boutons d'action */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: all 0.2s ease;
+    }
+    
+    .action-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .action-btn i {
+        font-size: 0.9rem;
+    }
+</style>
 @endsection

@@ -4,6 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Etablissement;
+use App\Models\Groupe;
+use App\Models\Module;
+use App\Models\AnneeDeFormation;
 
 class Formation extends Model
 {
@@ -58,12 +62,17 @@ class Formation extends Model
     }
 
     /**
-     * Relation avec les années de formation
-     * Une formation peut avoir plusieurs années
+     * Relation avec les années de formation via les groupes
+     * Une formation peut avoir plusieurs années via ses groupes
      */
     public function anneesFormation()
     {
-        return $this->hasMany(AnneeFormation::class);
+        return $this->belongsToMany(
+            AnneeDeFormation::class,
+            'groupes',
+            'formation_id',
+            'annee_de_formation_id'
+        )->distinct();
     }
 
     /**
