@@ -52,7 +52,7 @@ class EspacePedagogiqueController extends Controller
             'etablissement_id' => $etablissement->id,
         ]);
 
-        return redirect()->route('espaces.index')->with('success', 'Espace pédagogique créé avec succès.');
+        return redirect()->route('administrationetablissement.espaces.index')->with('success', 'Espace pédagogique créé avec succès.');
     }
 
     public function show(EspacePedagogique $espace)
@@ -84,13 +84,13 @@ class EspacePedagogiqueController extends Controller
 
         $espace->update($request->all());
 
-        return redirect()->route('espaces.index')->with('success', 'Espace pédagogique modifié avec succès.');
+        return redirect()->route('administrationetablissement.espaces.index')->with('success', 'Espace pédagogique modifié avec succès.');
     }
 
     public function destroy(EspacePedagogique $espace)
     {
         $espace->delete();
 
-        return redirect()->route('espaces.index')->with('success', 'Espace pédagogique supprimé avec succès.');
+        return redirect()->route('administrationetablissement.espaces.index')->with('success', 'Espace pédagogique supprimé avec succès.');
     }
 }
