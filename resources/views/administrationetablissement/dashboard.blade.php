@@ -27,8 +27,11 @@
         <a href="{{ route('administrationetablissement.modules.index') }}" class="btn btn-secondary btn-lg">
             📘 Gérer les Modules
         </a>
-        <a href="#" class="btn btn-success btn-lg">
+        <a href="{{ route('administrationetablissement.formateurs.index') }}" class="btn btn-success btn-lg">
             👩‍🏫 Gérer les Formateurs
+        </a>
+        <a href="{{ route('administrationetablissement.metiers.index') }}" class="btn btn-success btn-lg">
+            🛠️ Gérer les Métiers
         </a>
     </div>
 </div>

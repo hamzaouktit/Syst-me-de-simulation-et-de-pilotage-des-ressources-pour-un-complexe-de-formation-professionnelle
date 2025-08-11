@@ -12,11 +12,7 @@ class Module extends Model
     protected $fillable = [
         'nom',
         'masse_horaire',
-        'formation_id',
-    ];
-
-    protected $casts = [
-        'masse_horaire' => 'integer',
+        'formation_id'
     ];
 
     /**
@@ -28,10 +24,19 @@ class Module extends Model
     }
 
     /**
-     * Relation avec Métier (Many-to-Many)
+     * Relation many-to-many avec Metier via la table pivot metier_module
      */
     public function metiers()
     {
-        return $this->belongsToMany(Metier::class, 'metier_modules');
+        return $this->belongsToMany(Metier::class, 'metier_module', 'module_id', 'metier_id')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Obtenir tous les métiers associés à ce module
+     */
+    public function metierModules()
+    {
+        return $this->hasMany(MetierModule::class, 'module_id');
     }
 }

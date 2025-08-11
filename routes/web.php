@@ -32,4 +32,7 @@ Route::prefix('administrationetablissement')->name('administrationetablissement.
     Route::resource('anneesdeformations', \App\Http\Controllers\AdministrationEtablissement\AnneeDeFormationController::class);
     Route::resource('groupes', \App\Http\Controllers\AdministrationEtablissement\GroupeController::class);
     Route::resource('modules', \App\Http\Controllers\AdministrationEtablissement\ModuleController::class);
+    Route::resource('formateurs', \App\Http\Controllers\AdministrationEtablissement\FormateurController::class);
+    Route::resource('metiers', \App\Http\Controllers\AdministrationEtablissement\MetierController::class);
+
 });
