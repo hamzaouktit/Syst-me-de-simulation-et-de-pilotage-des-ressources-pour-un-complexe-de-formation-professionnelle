@@ -3,7 +3,7 @@
 @section('content')
 <div class="container text-center">
     <h1>
-        Bienvenue dans l’espace Directeur Établissement, Bonjour Mme {{ Auth::user()->nom }}
+        Bienvenue dans l’espace Directeur Établissement, Bonjour {{ Auth::user()->nom }}
     </h1>
     <p class="lead">Gérez facilement vos modules, espaces pédagogiques et formateurs.</p>
 

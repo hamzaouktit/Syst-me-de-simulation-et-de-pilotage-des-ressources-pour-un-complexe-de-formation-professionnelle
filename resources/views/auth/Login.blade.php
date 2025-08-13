@@ -99,7 +99,7 @@
                                 Se souvenir de moi
                             </label>
                         </div>
-                        <a href="#" class="forgot-password" onclick="return false;">
+                        <a href="{{ route('forgot.password.form') }}" class="forgot-password">
                             Mot de passe oublié ?
                         </a>
                     </div>

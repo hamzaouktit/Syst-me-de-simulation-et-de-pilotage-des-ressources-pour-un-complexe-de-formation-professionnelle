@@ -3,7 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DirecteurController;
 use App\Http\Controllers\EtablissementController;
+use App\Http\Controllers\ForgotPasswordController;
 use Illuminate\Support\Facades\Route;
+
 Route::fallback(function () {
     return redirect()->route('login'); 
 });
@@ -36,3 +38,11 @@ Route::prefix('administrationetablissement')->name('administrationetablissement.
     Route::resource('metiers', \App\Http\Controllers\AdministrationEtablissement\MetierController::class);
 
 });
+
+
+
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgetPasswordForm'])->name('forgot.password.form');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetCode'])->name('forgot.password.send');
+
+Route::get('/verify-code', [ForgotPasswordController::class, 'showVerifyCodeForm'])->name('forgot.password.code.form');
+Route::post('/verify-code', [ForgotPasswordController::class, 'verifyCode'])->name('forgot.password.verify');
