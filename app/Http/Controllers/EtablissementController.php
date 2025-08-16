@@ -13,17 +13,94 @@ class EtablissementController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         
         // Si l'utilisateur est directeur de complexe, afficher tous les établissements de son complexe
         if ($user->role === 'directeur_complexe') {
             $complexe = $user->complexe;
-            $etablissements = $complexe ? $complexe->etablissements()->with(['directeur', 'complexe'])->get() : collect();
+            if (!$complexe) {
+                $etablissements = collect();
+            } else {
+                $query = $complexe->etablissements()->with(['directeur', 'complexe']);
+                
+                // Recherche par nom, adresse ou nom du directeur
+                if ($request->filled('search')) {
+                    $search = $request->search;
+                    $query->where(function($q) use ($search) {
+                        $q->where('nom', 'like', '%' . $search . '%')
+                          ->orWhere('adresse', 'like', '%' . $search . '%')
+                          ->orWhereHas('directeur', function($subQuery) use ($search) {
+                              $subQuery->where('nom', 'like', '%' . $search . '%')
+                                       ->orWhere('email', 'like', '%' . $search . '%');
+                          });
+                    });
+                }
+                
+                // Filtrer par présence/absence de directeur
+                if ($request->filled('directeur')) {
+                    if ($request->directeur === 'with_directeur') {
+                        $query->whereNotNull('user_id');
+                    } elseif ($request->directeur === 'without_directeur') {
+                        $query->whereNull('user_id');
+                    }
+                }
+                
+                // Tri des résultats
+                if ($request->filled('sort')) {
+                    switch ($request->sort) {
+                        case 'nom_asc':
+                            $query->orderBy('nom', 'asc');
+                            break;
+                        case 'nom_desc':
+                            $query->orderBy('nom', 'desc');
+                            break;
+                        case 'created_asc':
+                            $query->orderBy('created_at', 'asc');
+                            break;
+                        case 'created_desc':
+                            $query->orderBy('created_at', 'desc');
+                            break;
+                        default:
+                            $query->orderBy('created_at', 'desc');
+                    }
+                } else {
+                    // Tri par défaut
+                    $query->orderBy('created_at', 'desc');
+                }
+                
+                // Pagination avec 10 éléments par page
+                $etablissements = $query->paginate(10);
+            }
         } else {
             // Si directeur d'établissement, afficher seulement son établissement
-            $etablissements = $user->etablissement ? collect([$user->etablissement->load(['directeur', 'complexe'])]) : collect();
+            if ($user->etablissement) {
+                $etablissement = $user->etablissement->load(['directeur', 'complexe']);
+                
+                // Appliquer les filtres même sur un seul établissement
+                $shouldShow = true;
+                
+                if ($request->filled('search')) {
+                    $search = strtolower($request->search);
+                    $shouldShow = stripos($etablissement->nom, $search) !== false ||
+                                 stripos($etablissement->adresse, $search) !== false ||
+                                 stripos($etablissement->directeur->nom ?? '', $search) !== false ||
+                                 stripos($etablissement->directeur->email ?? '', $search) !== false;
+                }
+                
+                if ($request->filled('directeur')) {
+                    if ($request->directeur === 'with_directeur' && !$etablissement->directeur) {
+                        $shouldShow = false;
+                    } elseif ($request->directeur === 'without_directeur' && $etablissement->directeur) {
+                        $shouldShow = false;
+                    }
+                }
+                
+                $etablissements = $shouldShow ? collect([$etablissement]) : collect();
+            } else {
+                $etablissements = collect();
+            }
         }
         
         return view('administrationcomplexe.etablissements.index', compact('etablissements'));
@@ -50,6 +127,7 @@ class EtablissementController extends Controller
         // Récupérer tous les directeurs d'établissement qui ne dirigent pas encore un établissement
         $directeursDisponibles = User::where('role', 'directeur_etablissement')
                                    ->whereDoesntHave('etablissement')
+                                   ->orderBy('nom')
                                    ->get();
 
         return view('administrationcomplexe.etablissements.create', compact('directeursDisponibles', 'complexe'));
@@ -121,7 +199,7 @@ class EtablissementController extends Controller
             }
         }
 
-        $etablissement->load(['directeur', 'complexe']);
+        $etablissement->load(['directeur', 'complexe', 'formations']);
         
         return view('administrationcomplexe.etablissements.show', compact('etablissement'));
     }
@@ -149,6 +227,7 @@ class EtablissementController extends Controller
                                        $query->whereDoesntHave('etablissement')
                                              ->orWhere('id', $etablissement->user_id);
                                    })
+                                   ->orderBy('nom')
                                    ->get();
 
         return view('administrationcomplexe.etablissements.edit', compact('etablissement', 'directeursDisponibles'));
@@ -212,6 +291,12 @@ class EtablissementController extends Controller
         
         if ($etablissement->complexe_id !== $user->complexe->id) {
             abort(403, 'Accès non autorisé.');
+        }
+
+        // Vérifier s'il y a des formations associées
+        if ($etablissement->formations && $etablissement->formations->count() > 0) {
+            return redirect()->route('administrationcomplexe.etablissements.index')
+                           ->with('error', 'Impossible de supprimer cet établissement car il contient des formations.');
         }
 
         $etablissement->delete();

@@ -13,10 +13,41 @@ class ModuleController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $modules = Module::with('formation')->get();
-        return view('administrationetablissement.modules.index', compact('modules'));
+        // Construire la requête de base
+        $query = Module::with('formation');
+
+        // Filtrage par recherche (nom du module)
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where('nom', 'LIKE', "%{$search}%");
+        }
+
+        // Filtrage par formation
+        if ($request->filled('formation_id')) {
+            $query->where('formation_id', $request->get('formation_id'));
+        }
+
+        // Filtrage par masse horaire
+        if ($request->filled('masse_horaire_min')) {
+            $query->where('masse_horaire', '>=', $request->get('masse_horaire_min'));
+        }
+
+        if ($request->filled('masse_horaire_max')) {
+            $query->where('masse_horaire', '<=', $request->get('masse_horaire_max'));
+        }
+
+        // Tri par défaut par nom
+        $query->orderBy('nom', 'asc');
+
+        // Pagination
+        $modules = $query->paginate(10);
+
+        // Récupérer toutes les formations pour le filtre
+        $formations = Formation::orderBy('titre')->get();
+
+        return view('administrationetablissement.modules.index', compact('modules', 'formations'));
     }
 
     /**

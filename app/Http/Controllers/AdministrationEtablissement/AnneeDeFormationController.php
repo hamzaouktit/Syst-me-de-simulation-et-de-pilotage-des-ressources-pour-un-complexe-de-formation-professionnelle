@@ -5,16 +5,46 @@ namespace App\Http\Controllers\AdministrationEtablissement;
 use App\Http\Controllers\Controller;
 use App\Models\AnneeDeFormation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class AnneeDeFormationController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $anneesDeFormation = AnneeDeFormation::orderBy('annee', 'desc')->paginate(10);
+        $query = AnneeDeFormation::query();
+
+        // Recherche
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where('annee', 'like', "%{$search}%");
+        }
+
+        // Tri
+        if ($request->filled('sort')) {
+            switch ($request->input('sort')) {
+                case 'annee_asc':
+                    $query->orderBy('annee', 'asc');
+                    break;
+                case 'annee_desc':
+                    $query->orderBy('annee', 'desc');
+                    break;
+                case 'created_at_asc':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'created_at_desc':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('annee', 'desc');
+            }
+        } else {
+            $query->orderBy('annee', 'desc');
+        }
+
+        $anneesDeFormation = $query->paginate(10)->withQueryString();
+
         return view('administrationetablissement.anneesdeformations.index', compact('anneesDeFormation'));
     }
 
@@ -91,7 +121,6 @@ class AnneeDeFormationController extends Controller
     public function destroy(AnneeDeFormation $anneesdeformation)
     {
         try {
-            // Vérifier s'il y a des groupes associés
             if ($anneesdeformation->groupes()->count() > 0) {
                 return redirect()->route('administrationetablissement.anneesdeformations.index')
                     ->with('error', 'Impossible de supprimer cette année car elle contient des groupes.');

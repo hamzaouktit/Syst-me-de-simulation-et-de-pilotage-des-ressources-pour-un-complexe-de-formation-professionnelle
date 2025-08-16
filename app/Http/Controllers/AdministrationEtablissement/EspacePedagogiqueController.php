@@ -10,14 +10,59 @@ use Illuminate\Support\Facades\Auth;
 
 class EspacePedagogiqueController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Récupérer l'établissement du directeur connecté
         $etablissement = Etablissement::where('user_id', Auth::id())->firstOrFail();
 
-        $espaces = EspacePedagogique::where('etablissement_id', $etablissement->id)->get();
+        // Construire la requête de base
+        $query = EspacePedagogique::where('etablissement_id', $etablissement->id);
 
-        return view('administrationetablissement.espaces.index', compact('espaces'));
+        // Filtrage par recherche (nom ou type)
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('nom', 'LIKE', "%{$search}%")
+                  ->orWhere('type', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Filtrage par type
+        if ($request->filled('type')) {
+            $query->where('type', $request->get('type'));
+        }
+
+        // Filtrage par capacité
+        if ($request->filled('capacite_min')) {
+            $query->where('capacite', '>=', $request->get('capacite_min'));
+        }
+
+        if ($request->filled('capacite_max')) {
+            $query->where('capacite', '<=', $request->get('capacite_max'));
+        }
+
+        // Filtrage par couverture horaire
+        if ($request->filled('couverture_min')) {
+            $query->where('couvertureHoraireMax', '>=', $request->get('couverture_min'));
+        }
+
+        if ($request->filled('couverture_max')) {
+            $query->where('couvertureHoraireMax', '<=', $request->get('couverture_max'));
+        }
+
+        // Tri par défaut par nom
+        $query->orderBy('nom', 'asc');
+
+        // Pagination
+        $espaces = $query->paginate(10);
+
+        // Récupérer les types d'espaces distincts pour le filtre
+        $typesEspaces = EspacePedagogique::where('etablissement_id', $etablissement->id)
+                                       ->distinct()
+                                       ->pluck('type')
+                                       ->sort();
+
+        return view('administrationetablissement.espaces.index', compact('espaces', 'typesEspaces'));
     }
 
     public function create()

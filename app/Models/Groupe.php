@@ -28,17 +28,6 @@ class Groupe extends Model
     {
         return $this->belongsTo(Formation::class);
     }
-
-
-
-
-
-
-
-
-
-
-
     // Relation avec AnneeDeFormation
     public function anneeDeFormation()
 {

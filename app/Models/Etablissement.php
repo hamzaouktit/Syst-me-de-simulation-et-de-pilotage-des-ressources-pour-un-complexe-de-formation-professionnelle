@@ -4,9 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Complexe;
-use App\Models\User ;
-
 
 class Etablissement extends Model
 {
@@ -31,5 +28,23 @@ class Etablissement extends Model
     public function directeur()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    // Relation avec Formation
+    public function formations()
+    {
+        return $this->hasMany(Formation::class);
+    }
+
+    // Relation avec Formateur
+    public function formateurs()
+    {
+        return $this->hasMany(Formateur::class);
+    }
+
+    // Relation avec EspacePedagogique
+    public function espacesPedagogiques()
+    {
+        return $this->hasMany(EspacePedagogique::class);
     }
 }

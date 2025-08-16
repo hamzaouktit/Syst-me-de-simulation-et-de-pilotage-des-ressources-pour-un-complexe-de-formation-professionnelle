@@ -11,9 +11,34 @@ class MetierController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $metiers = Metier::orderBy('nom')->paginate(10);
+        // Construction de la requête de base
+        $query = Metier::query();
+
+        // Recherche par nom
+        if ($request->filled('search_nom')) {
+            $query->where('nom', 'like', '%' . $request->search_nom . '%');
+        }
+
+        // Recherche par description
+        if ($request->filled('search_description')) {
+            $query->where('description', 'like', '%' . $request->search_description . '%');
+        }
+
+        // Tri
+        $sort_by = $request->get('sort_by', 'nom');
+        $sort_direction = $request->get('sort_direction', 'asc');
+        
+        $valid_sort_columns = ['nom', 'description', 'created_at'];
+        if (in_array($sort_by, $valid_sort_columns)) {
+            $query->orderBy($sort_by, $sort_direction);
+        } else {
+            $query->orderBy('nom', 'asc');
+        }
+
+        $metiers = $query->paginate(10)->withQueryString();
+        
         return view('administrationetablissement.metiers.index', compact('metiers'));
     }
 

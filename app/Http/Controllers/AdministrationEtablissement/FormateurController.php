@@ -11,14 +11,55 @@ use Illuminate\Support\Facades\Auth;
 
 class FormateurController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $etablissement_id = $this->getEtablissementId();
-        $formateurs = Formateur::with(['etablissement', 'metiers'])
-                                ->where('etablissement_id', $etablissement_id)
-                                ->paginate(10);
         
-        return view('administrationetablissement.formateurs.index', compact('formateurs'));
+        // Construction de la requête de base
+        $query = Formateur::with(['etablissement', 'metiers'])
+                          ->where('etablissement_id', $etablissement_id);
+
+        // Recherche par nom
+        if ($request->filled('search_nom')) {
+            $query->where('nom', 'like', '%' . $request->search_nom . '%');
+        }
+
+        // Recherche par email
+        if ($request->filled('search_email')) {
+            $query->where('email', 'like', '%' . $request->search_email . '%');
+        }
+
+        // Filtrage par métier
+        if ($request->filled('search_metier')) {
+            $query->whereHas('metiers', function($q) use ($request) {
+                $q->where('metier_id', $request->search_metier);
+            });
+        }
+
+        // Filtrage par masse horaire
+        if ($request->filled('search_masse_horaire_min')) {
+            $query->where('masse_horaire_disponible', '>=', $request->search_masse_horaire_min);
+        }
+
+        if ($request->filled('search_masse_horaire_max')) {
+            $query->where('masse_horaire_disponible', '<=', $request->search_masse_horaire_max);
+        }
+
+        // Tri
+        $sort_by = $request->get('sort_by', 'nom');
+        $sort_direction = $request->get('sort_direction', 'asc');
+        
+        $valid_sort_columns = ['nom', 'email', 'masse_horaire_disponible', 'created_at'];
+        if (in_array($sort_by, $valid_sort_columns)) {
+            $query->orderBy($sort_by, $sort_direction);
+        }
+
+        $formateurs = $query->paginate(10)->withQueryString();
+        
+        // Récupérer tous les métiers pour le filtre
+        $metiers = Metier::orderBy('nom')->get();
+        
+        return view('administrationetablissement.formateurs.index', compact('formateurs', 'metiers'));
     }
 
     public function create()
@@ -106,6 +147,8 @@ class FormateurController extends Controller
         return redirect()->route('administrationetablissement.formateurs.index')
                         ->with('success', 'Formateur supprimé avec succès.');
     }
+
+
 
     private function getEtablissementId()
     {

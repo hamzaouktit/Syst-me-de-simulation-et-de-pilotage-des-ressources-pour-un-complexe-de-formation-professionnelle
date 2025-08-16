@@ -9,10 +9,53 @@ use Illuminate\Support\Facades\Hash;
 
 class DirecteurController extends Controller
 {
-    // Afficher la liste des directeurs
-    public function index()
+    // Afficher la liste des directeurs avec recherche et pagination
+    public function index(Request $request)
     {
-        $directeurs = User::where('role', 'directeur_etablissement')->get();
+        $query = User::where('role', 'directeur_etablissement')
+                    ->with('etablissement'); // Charger la relation établissement
+        
+        // Recherche par nom ou email
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nom', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+        
+        // Tri des résultats
+        if ($request->filled('sort')) {
+            switch ($request->sort) {
+                case 'nom_asc':
+                    $query->orderBy('nom', 'asc');
+                    break;
+                case 'nom_desc':
+                    $query->orderBy('nom', 'desc');
+                    break;
+                case 'email_asc':
+                    $query->orderBy('email', 'asc');
+                    break;
+                case 'email_desc':
+                    $query->orderBy('email', 'desc');
+                    break;
+                case 'created_asc':
+                    $query->orderBy('created_at', 'asc');
+                    break;
+                case 'created_desc':
+                    $query->orderBy('created_at', 'desc');
+                    break;
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+        } else {
+            // Tri par défaut
+            $query->orderBy('created_at', 'desc');
+        }
+        
+        // Pagination avec 10 éléments par page
+        $directeurs = $query->paginate(10);
+        
         return view('administrationcomplexe.directeurs.index', compact('directeurs'));
     }
 
@@ -45,14 +88,18 @@ class DirecteurController extends Controller
     // Afficher un directeur
     public function show($id)
     {
-        $directeur = User::where('role', 'directeur_etablissement')->findOrFail($id);
+        $directeur = User::where('role', 'directeur_etablissement')
+                        ->with('etablissement')
+                        ->findOrFail($id);
         return view('administrationcomplexe.directeurs.show', compact('directeur'));
     }
 
     // Formulaire modification
     public function edit($id)
     {
-        $directeur = User::where('role', 'directeur_etablissement')->findOrFail($id);
+        $directeur = User::where('role', 'directeur_etablissement')
+                        ->with('etablissement')
+                        ->findOrFail($id);
         return view('administrationcomplexe.directeurs.edit', compact('directeur'));
     }
 
@@ -82,6 +129,13 @@ class DirecteurController extends Controller
     public function destroy($id)
     {
         $directeur = User::where('role', 'directeur_etablissement')->findOrFail($id);
+        
+        // Vérifier si le directeur a un établissement associé
+        if ($directeur->etablissement) {
+            return redirect()->route('administrationcomplexe.directeurs.index')
+                           ->with('error', 'Impossible de supprimer ce directeur car il est associé à un établissement.');
+        }
+        
         $directeur->delete();
 
         return redirect()->route('administrationcomplexe.directeurs.index')
