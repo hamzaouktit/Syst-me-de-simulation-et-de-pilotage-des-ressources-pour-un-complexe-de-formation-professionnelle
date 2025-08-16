@@ -1,38 +1,39 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Créer un Établissement</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{{ route('dashboard.complexe') }}">
-                <i class="fas fa-building"></i> Administration Complexe
-            </a>
-            <div class="navbar-nav ms-auto">
-                <form action="{{ route('logout') }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-outline-light">
-                        <i class="fas fa-sign-out-alt"></i> Déconnexion
-                    </button>
-                </form>
-            </div>
-        </div>
-    </nav>
+@extends('layouts.app')
 
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow">
-                    <div class="card-header bg-success text-white">
-                        <h4 class="mb-0">
-                            <i class="fas fa-plus-circle"></i> Créer un Nouvel Établissement
-                        </h4>
-                    </div>
+@section('title', 'Créer un Établissement')
+
+@section('page-title', 'Créer un Établissement')
+
+@section('breadcrumb')
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{{ route('dashboard.complexe') }}">
+                    <i class="fas fa-home"></i> Tableau de bord
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{{ route('administrationcomplexe.etablissements.index') }}">
+                    <i class="fas fa-building"></i> Établissements
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="fas fa-plus-circle"></i> Créer
+            </li>
+        </ol>
+    </nav>
+@endsection
+
+@section('content')
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Formulaire de création -->
+        <div class="card shadow">
+            <div class="card-header bg-success text-white d-flex align-items-center">
+                <i class="fas fa-plus-circle me-2"></i>
+                <h4 class="mb-0">Créer un Nouvel Établissement</h4>
+            </div>
                     <div class="card-body">
                         @if(session('error'))
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -46,8 +47,8 @@
                             
                             <div class="row">
                                 <div class="col-md-12 mb-3">
-                                    <label for="nom" class="form-label">
-                                        <i class="fas fa-school"></i> Nom de l'établissement *
+                                    <label for="nom" class="form-label fw-bold">
+                                        <i class="fas fa-school text-primary me-2"></i>Nom de l'établissement <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control @error('nom') is-invalid @enderror" 
                                            id="nom" name="nom" value="{{ old('nom') }}" 
@@ -60,8 +61,8 @@
 
                             <div class="row">
                                 <div class="col-md-12 mb-3">
-                                    <label for="adresse" class="form-label">
-                                        <i class="fas fa-map-marker-alt"></i> Adresse *
+                                    <label for="adresse" class="form-label fw-bold">
+                                        <i class="fas fa-map-marker-alt text-danger me-2"></i>Adresse <span class="text-danger">*</span>
                                     </label>
                                     <textarea class="form-control @error('adresse') is-invalid @enderror" 
                                               id="adresse" name="adresse" rows="2" 
@@ -74,8 +75,8 @@
 
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="longitude" class="form-label">
-                                        <i class="fas fa-globe"></i> Longitude *
+                                    <label for="longitude" class="form-label fw-bold">
+                                        <i class="fas fa-globe text-info me-2"></i>Longitude <span class="text-danger">*</span>
                                     </label>
                                     <input type="number" step="any" class="form-control @error('longitude') is-invalid @enderror" 
                                            id="longitude" name="longitude" value="{{ old('longitude') }}" 
@@ -87,8 +88,8 @@
                                 </div>
 
                                 <div class="col-md-6 mb-3">
-                                    <label for="altitude" class="form-label">
-                                        <i class="fas fa-mountain"></i> Altitude *
+                                    <label for="altitude" class="form-label fw-bold">
+                                        <i class="fas fa-mountain text-success me-2"></i>Altitude <span class="text-danger">*</span>
                                     </label>
                                     <input type="number" step="any" class="form-control @error('altitude') is-invalid @enderror" 
                                            id="altitude" name="altitude" value="{{ old('altitude') }}" 
@@ -102,8 +103,8 @@
 
                             <div class="row">
                                 <div class="col-md-12 mb-3">
-                                    <label for="user_id" class="form-label">
-                                        <i class="fas fa-user-tie"></i> Directeur d'établissement *
+                                    <label for="user_id" class="form-label fw-bold">
+                                        <i class="fas fa-user-tie text-warning me-2"></i>Directeur d'établissement <span class="text-danger">*</span>
                                     </label>
                                     <select class="form-select @error('user_id') is-invalid @enderror" id="user_id" name="user_id">
                                         <option value="">-- Sélectionner un directeur --</option>
@@ -126,21 +127,28 @@
                                 </div>
                             </div>
 
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                <strong>Information :</strong> Cet établissement sera rattaché au complexe 
-                                <strong>{{ $complexe->nom }}</strong>.
+                            <div class="alert alert-info border-l-4 border-info">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-info-circle text-info me-3"></i>
+                                    <div>
+                                        <strong>Information :</strong> Cet établissement sera rattaché au complexe 
+                                        <strong class="text-primary">{{ $complexe->nom }}</strong>.
+                                    </div>
+                                </div>
                             </div>
 
                             <hr>
 
-                            <div class="d-flex justify-content-between">
-                                <a href="{{ route('administrationcomplexe.etablissements.index') }}" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left"></i> Annuler
-                                </a>
-                                <button type="submit" class="btn btn-success" 
+                            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a href="{{ route('administrationcomplexe.etablissements.index') }}" 
+                                       class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-1"></i> Retour à la liste
+                                    </a>
+                                </div>
+                                <button type="submit" class="btn btn-success px-4" 
                                         {{ $directeursDisponibles->isEmpty() ? 'disabled' : '' }}>
-                                    <i class="fas fa-save"></i> Créer l'établissement
+                                    <i class="fas fa-save me-2"></i>Créer l'établissement
                                 </button>
                             </div>
                         </form>
@@ -165,6 +173,66 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('styles')
+<style>
+    .border-l-4 {
+        border-left: 4px solid !important;
+    }
+    .info-group strong {
+        font-size: 0.9em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .card-header {
+        border-bottom: 3px solid rgba(0,0,0,0.1);
+    }
+    .form-label {
+        margin-bottom: 0.75rem;
+    }
+    .btn {
+        transition: all 0.3s ease;
+    }
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation côté client
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', function(e) {
+        const longitude = parseFloat(document.getElementById('longitude').value);
+        
+        if (longitude < -180 || longitude > 180) {
+            e.preventDefault();
+            alert('La longitude doit être comprise entre -180 et 180 degrés.');
+            return false;
+        }
+    });
+
+    // Animation pour les champs requis
+    const requiredFields = document.querySelectorAll('input[required], select[required], textarea[required]');
+    
+    requiredFields.forEach(field => {
+        field.addEventListener('blur', function() {
+            if (this.value.trim() === '') {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+            }
+        });
+    });
+});
+</script>
+@endpush
