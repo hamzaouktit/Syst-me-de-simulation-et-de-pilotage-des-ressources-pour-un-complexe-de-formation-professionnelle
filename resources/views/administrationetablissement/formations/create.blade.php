@@ -6,7 +6,12 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">Créer une nouvelle Formation</h3>
+                    <div>
+                        <h3 class="card-title">Créer une nouvelle Formation</h3>
+                        <small class="text-muted">
+                            Établissement: {{ $etablissement->nom }}
+                        </small>
+                    </div>
                     <a href="{{ route('administrationetablissement.formations.index') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Retour à la liste
                     </a>
@@ -15,6 +20,9 @@
                 <div class="card-body">
                     <form action="{{ route('administrationetablissement.formations.store') }}" method="POST">
                         @csrf
+                        
+                        <!-- Champ caché pour l'établissement -->
+                        <input type="hidden" name="etablissement_id" value="{{ $etablissement_id }}">
                         
                         <div class="row">
                             <!-- Titre -->
@@ -42,7 +50,7 @@
                                        id="niveau" 
                                        name="niveau" 
                                        value="{{ old('niveau') }}" 
-                                       placeholder="Ex: Master, Licence, BTS..."
+                                       placeholder="Ex: Master, Licence, BTS, DUT..."
                                        required>
                                 @error('niveau')
                                     <div class="invalid-feedback">
@@ -86,26 +94,19 @@
                                 @enderror
                             </div>
 
-                            <!-- Établissement -->
+                            <!-- Établissement (en lecture seule) -->
                             <div class="col-md-6 mb-3">
-                                <label for="etablissement_id" class="form-label">Établissement <span class="text-danger">*</span></label>
-                                <select class="form-control @error('etablissement_id') is-invalid @enderror" 
-                                        id="etablissement_id" 
-                                        name="etablissement_id" 
-                                        required>
-                                    <option value="">Sélectionnez un établissement</option>
-                                    @foreach($etablissements as $etablissement)
-                                        <option value="{{ $etablissement->id }}" 
-                                            {{ old('etablissement_id') == $etablissement->id ? 'selected' : '' }}>
-                                            {{ $etablissement->nom }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('etablissement_id')
-                                    <div class="invalid-feedback">
-                                        {{ $message }}
-                                    </div>
-                                @enderror
+                                <label for="etablissement_display" class="form-label">Établissement</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="etablissement_display" 
+                                       value="{{ $etablissement->nom }}" 
+                                       readonly
+                                       style="background-color: #f8f9fa;">
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    La formation sera automatiquement associée à votre établissement.
+                                </small>
                             </div>
                         </div>
 
@@ -114,7 +115,9 @@
                             <div class="col-12">
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle"></i>
-                                    <strong>Information :</strong> Les champs marqués d'un astérisque (*) sont obligatoires.
+                                    <strong>Information :</strong> 
+                                    Les champs marqués d'un astérisque (*) sont obligatoires. 
+                                    Cette formation sera créée pour l'établissement <strong>{{ $etablissement->nom }}</strong>.
                                 </div>
                             </div>
                         </div>
@@ -166,6 +169,10 @@
                 alert('Veuillez remplir tous les champs obligatoires.');
             }
         });
+
+        // Debug info
+        console.log('Établissement ID:', {{ $etablissement_id }});
+        console.log('Établissement nom:', '{{ $etablissement->nom }}');
     });
 </script>
 @endpush

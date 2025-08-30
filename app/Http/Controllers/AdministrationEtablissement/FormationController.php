@@ -11,6 +11,7 @@ use App\Models\AnneeFormation;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
 
 class FormationController extends Controller
 {
@@ -19,16 +20,21 @@ class FormationController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = Formation::with('etablissement');
+        $etablissement_id = $this->getEtablissementId();
+        
+        // Construction de la requête de base - FILTRER PAR ÉTABLISSEMENT DU DIRECTEUR
+        $query = Formation::with('etablissement')
+                          ->where('etablissement_id', $etablissement_id);
 
-        // Filtres
+        // Filtres additionnels
         if ($request->filled('type')) {
             $query->byType($request->type);
         }
 
-        if ($request->filled('etablissement_id')) {
-            $query->byEtablissement($request->etablissement_id);
-        }
+        // Note: Retirer le filtre par etablissement_id car on filtre déjà
+        // if ($request->filled('etablissement_id')) {
+        //     $query->byEtablissement($request->etablissement_id);
+        // }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -38,9 +44,11 @@ class FormationController extends Controller
         }
 
         $formations = $query->orderBy('titre')->paginate(15);
-        $etablissements = Etablissement::orderBy('nom')->get();
+        
+        // Récupérer seulement l'établissement du directeur connecté
+        $etablissement = $this->getEtablissement();
 
-        return view('administrationetablissement.formations.index', compact('formations', 'etablissements'));
+        return view('administrationetablissement.formations.index', compact('formations', 'etablissement'));
     }
 
     /**
@@ -48,10 +56,11 @@ class FormationController extends Controller
      */
     public function create(): View
     {
-        $etablissements = Etablissement::orderBy('nom')->get();
+        $etablissement_id = $this->getEtablissementId();
+        $etablissement = $this->getEtablissement();
         $types = ['initiale', 'continue', 'alternance', 'distance'];
 
-        return view('administrationetablissement.formations.create', compact('etablissements', 'types'));
+        return view('administrationetablissement.formations.create', compact('etablissement', 'etablissement_id', 'types'));
     }
 
     /**
@@ -59,12 +68,16 @@ class FormationController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $etablissement_id = $this->getEtablissementId();
+
         $validated = $request->validate([
             'titre' => 'required|string|max:255',
             'niveau' => 'required|string|max:255',
             'type' => 'required|in:initiale,continue,alternance,distance',
-            'etablissement_id' => 'required|exists:etablissements,id',
         ]);
+
+        // Forcer l'établissement du directeur connecté
+        $validated['etablissement_id'] = $etablissement_id;
 
         Formation::create($validated);
 
@@ -77,6 +90,8 @@ class FormationController extends Controller
      */
     public function show(Formation $formation): View
     {
+        $this->checkEtablissementAccess($formation);
+
         // Charger les relations avec des sous-relations pour optimiser les requêtes
         $formation->load([
             'etablissement',
@@ -95,10 +110,12 @@ class FormationController extends Controller
      */
     public function edit(Formation $formation): View
     {
-        $etablissements = Etablissement::orderBy('nom')->get();
+        $this->checkEtablissementAccess($formation);
+        
+        $etablissement = $this->getEtablissement();
         $types = ['initiale', 'continue', 'alternance', 'distance'];
 
-        return view('administrationetablissement.formations.edit', compact('formation', 'etablissements', 'types'));
+        return view('administrationetablissement.formations.edit', compact('formation', 'etablissement', 'types'));
     }
 
     /**
@@ -106,12 +123,16 @@ class FormationController extends Controller
      */
     public function update(Request $request, Formation $formation): RedirectResponse
     {
+        $this->checkEtablissementAccess($formation);
+
         $validated = $request->validate([
             'titre' => 'required|string|max:255',
             'niveau' => 'required|string|max:255',
             'type' => 'required|in:initiale,continue,alternance,distance',
-            'etablissement_id' => 'required|exists:etablissements,id',
         ]);
+
+        // Pas besoin de permettre de changer l'établissement
+        // $validated['etablissement_id'] reste celui du directeur
 
         $formation->update($validated);
 
@@ -124,6 +145,8 @@ class FormationController extends Controller
      */
     public function destroy(Formation $formation): RedirectResponse
     {
+        $this->checkEtablissementAccess($formation);
+
         try {
             $formation->delete();
             return redirect()->route('administrationetablissement.formations.index')
@@ -139,7 +162,9 @@ class FormationController extends Controller
      */
     public function getByEtablissement(Request $request)
     {
-        $etablissementId = $request->etablissement_id;
+        $etablissementId = $this->getEtablissementId();
+        
+        // Retourner seulement les formations de l'établissement du directeur connecté
         $formations = Formation::where('etablissement_id', $etablissementId)
             ->orderBy('titre')
             ->get(['id', 'titre', 'niveau', 'type']);
@@ -152,18 +177,59 @@ class FormationController extends Controller
      */
     public function statistics()
     {
+        $etablissementId = $this->getEtablissementId();
+        
+        // Statistiques limitées à l'établissement du directeur
         $stats = [
-            'total' => Formation::count(),
-            'by_type' => Formation::selectRaw('type, COUNT(*) as count')
+            'total' => Formation::where('etablissement_id', $etablissementId)->count(),
+            'by_type' => Formation::where('etablissement_id', $etablissementId)
+                ->selectRaw('type, COUNT(*) as count')
                 ->groupBy('type')
                 ->pluck('count', 'type'),
-            'by_etablissement' => Formation::with('etablissement:id,nom')
-                ->selectRaw('etablissement_id, COUNT(*) as count')
-                ->groupBy('etablissement_id')
-                ->get()
-                ->pluck('count', 'etablissement.nom'),
         ];
 
         return response()->json($stats);
+    }
+
+    private function getEtablissementId()
+    {
+        $user = Auth::user();
+        
+        if (!$user) {
+            abort(403, 'Utilisateur non authentifié');
+        }
+        
+        // Récupérer l'établissement dirigé par cet utilisateur
+        $etablissement = $user->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas directeur d\'un établissement');
+        }
+        
+        return $etablissement->id;
+    }
+
+    private function getEtablissement()
+    {
+        $user = Auth::user();
+        
+        if (!$user) {
+            abort(403, 'Utilisateur non authentifié');
+        }
+        
+        $etablissement = $user->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas directeur d\'un établissement');
+        }
+        
+        return $etablissement;
+    }
+
+    private function checkEtablissementAccess(Formation $formation)
+    {
+        if ($formation->etablissement_id !== $this->getEtablissementId()) {
+            abort(403, 'Accès non autorisé à cette formation');
+        }
     }
 }

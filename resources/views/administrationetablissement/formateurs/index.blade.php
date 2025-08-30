@@ -6,7 +6,15 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">Gestion des Formateurs</h3>
+                    <div>
+                        <h3 class="card-title">Gestion des Formateurs</h3>
+                        <small class="text-muted">
+                            Établissement: {{ Auth::user()->etablissement->nom ?? 'Non défini' }}
+                            @if(Auth::user()->etablissement)
+                                (ID: {{ Auth::user()->etablissement->id }})
+                            @endif
+                        </small>
+                    </div>
                     <a href="{{ route('administrationetablissement.formateurs.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nouveau Formateur
                     </a>
@@ -90,6 +98,19 @@
                         </div>
                     @endif
 
+                    <!-- Statistiques -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>{{ $formateurs->total() }}</strong> formateur(s) trouvé(s) dans votre établissement
+                                @if(request()->hasAny(['search_nom', 'search_email', 'search_metier', 'search_masse_horaire_min', 'search_masse_horaire_max']))
+                                    <span class="text-muted">(filtré)</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tableau -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
@@ -144,31 +165,31 @@
                                         </td>
                                         <td>
                                             @forelse($formateur->metiers as $metier)
-                                                <span class="badge bg-secondary me-1">{{ $metier->nom }}</span>
+                                                <span class="badge bg-secondary me-1 mb-1">{{ $metier->nom }}</span>
                                             @empty
-                                                <span class="text-muted small">Aucun métier</span>
+                                                <span class="text-muted small">Aucun métier assigné</span>
                                             @endforelse
                                         </td>
-                                        <td>{{ $formateur->etablissement->nom }}</td>
-                                        <td>{{ $formateur->created_at->format('d/m/Y') }}</td>
+                                        <td>
+                                            {{ $formateur->etablissement->nom }}
+                                            <small class="text-muted d-block">(ID: {{ $formateur->etablissement_id }})</small>
+                                        </td>
+                                        <td>{{ $formateur->created_at->format('d/m/Y H:i') }}</td>
                                         <td class="text-center">
-                                            <div class="d-flex justify-content-center gap-2">
-                                                <!-- Bouton Voir -->
+                                            <div class="d-flex justify-content-center gap-1">
                                                 <a href="{{ route('administrationetablissement.formateurs.show', $formateur) }}" 
-                                                   class="btn btn-sm btn-info rounded-circle action-btn" title="Voir">
+                                                   class="btn btn-sm btn-info rounded-circle action-btn" title="Voir le détail">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 
-                                                <!-- Bouton Modifier -->
                                                 <a href="{{ route('administrationetablissement.formateurs.edit', $formateur) }}" 
                                                    class="btn btn-sm btn-warning rounded-circle action-btn" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                                 
-                                                <!-- Bouton Supprimer -->
                                                 <form action="{{ route('administrationetablissement.formateurs.destroy', $formateur) }}" 
                                                       method="POST" class="d-inline"
-                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce formateur ?')">
+                                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer le formateur {{ $formateur->nom }} ?\n\nCette action est irréversible et supprimera aussi toutes ses associations avec les métiers.')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-danger rounded-circle action-btn" title="Supprimer">
@@ -182,7 +203,18 @@
                                     <tr>
                                         <td colspan="8" class="text-center text-muted py-4">
                                             <i class="fas fa-chalkboard-teacher fa-3x mb-3"></i>
-                                            <p>Aucun formateur trouvé</p>
+                                            <h5>Aucun formateur trouvé</h5>
+                                            @if(request()->hasAny(['search_nom', 'search_email', 'search_metier', 'search_masse_horaire_min', 'search_masse_horaire_max']))
+                                                <p>Aucun formateur ne correspond aux critères de recherche.</p>
+                                                <a href="{{ route('administrationetablissement.formateurs.index') }}" class="btn btn-secondary">
+                                                    <i class="fas fa-refresh"></i> Voir tous les formateurs
+                                                </a>
+                                            @else
+                                                <p>Aucun formateur n'est encore enregistré dans votre établissement.</p>
+                                                <a href="{{ route('administrationetablissement.formateurs.create') }}" class="btn btn-primary">
+                                                    <i class="fas fa-plus"></i> Créer le premier formateur
+                                                </a>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforelse
@@ -191,8 +223,14 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="d-flex justify-content-center">
-                        {{ $formateurs->appends(request()->query())->links() }}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="text-muted">
+                            Affichage de {{ $formateurs->firstItem() ?? 0 }} à {{ $formateurs->lastItem() ?? 0 }} 
+                            sur {{ $formateurs->total() }} formateur(s)
+                        </div>
+                        <div>
+                            {{ $formateurs->appends(request()->query())->links() }}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -201,7 +239,6 @@
 </div>
 
 <style>
-    /* Style personnalisé pour les boutons d'action */
     .action-btn {
         width: 32px;
         height: 32px;
@@ -220,12 +257,15 @@
     .action-btn i {
         font-size: 0.9rem;
     }
+    
+    .badge {
+        font-size: 0.75em;
+    }
 </style>
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-submit sur changement des selects
     const autoSubmitSelects = document.querySelectorAll('select[name="search_metier"]');
     autoSubmitSelects.forEach(select => {
         select.addEventListener('change', function() {
@@ -233,13 +273,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Raccourci clavier pour la recherche
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.key === '/') {
             e.preventDefault();
-            document.getElementById('search_nom').focus();
+            const searchInput = document.querySelector('input[name="search_nom"]');
+            if (searchInput) {
+                searchInput.focus();
+            }
         }
     });
+
+    // Debug info
+    @if(Auth::user()->etablissement)
+    console.log('Établissement ID:', {{ Auth::user()->etablissement->id }});
+    console.log('Établissement nom:', '{{ Auth::user()->etablissement->nom }}');
+    @else
+    console.log('Aucun établissement trouvé pour cet utilisateur');
+    @endif
 });
 </script>
 @endpush
