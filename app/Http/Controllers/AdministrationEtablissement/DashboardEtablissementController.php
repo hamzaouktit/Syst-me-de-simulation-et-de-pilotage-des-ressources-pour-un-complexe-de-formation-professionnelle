@@ -19,20 +19,30 @@ class DashboardEtablissementController extends Controller
     /**
      * Display the etablissement dashboard
      */
-    public function index()
+    public function index(Etablissement $etablissement = null)
     {
         $user = Auth::user();
         
-        // Vérifier que l'utilisateur a le rôle approprié
-        if ($user->role !== 'directeur_etablissement') {
-            abort(403, 'Accès non autorisé');
-        }
-
-        // Récupérer l'établissement dirigé par cet utilisateur
-        $etablissement = $user->etablissement;
-        
+        // Si aucun établissement n'est fourni, utiliser celui de l'utilisateur connecté
         if (!$etablissement) {
-            abort(404, 'Aucun établissement associé à cet utilisateur');
+            // Vérifier que l'utilisateur a le rôle approprié
+            if ($user->role !== 'directeur_etablissement') {
+                abort(403, 'Accès non autorisé');
+            }
+
+            // Récupérer l'établissement dirigé par cet utilisateur
+            $etablissement = $user->etablissement;
+            
+            if (!$etablissement) {
+                abort(404, 'Aucun établissement associé à cet utilisateur');
+            }
+        } else {
+            // Vérifier si l'utilisateur a le droit de voir ce tableau de bord
+            if ($user->role === 'directeur_etablissement' && $etablissement->id !== $user->etablissement_id) {
+                abort(403, 'Accès non autorisé à ce tableau de bord');
+            } elseif ($user->role === 'directeur_complexe' && $etablissement->complexe_id !== $user->complexe_id) {
+                abort(403, 'Accès non autorisé à ce tableau de bord');
+            }
         }
 
         // Statistiques générales de l'établissement
@@ -57,6 +67,59 @@ class DashboardEtablissementController extends Controller
      */
     private function getEtablissementStats($etablissement)
     {
+        $totalFormateurs = Formateur::where('etablissement_id', $etablissement->id)->count();
+        $totalEspaces = EspacePedagogique::where('etablissement_id', $etablissement->id)->count();
+        $masseHoraireDisponible = Formateur::where('etablissement_id', $etablissement->id)
+            ->sum('masse_horaire_disponible');
+        $masseHoraireModules = Module::whereHas('formation', function($query) use ($etablissement) {
+            $query->where('etablissement_id', $etablissement->id);
+        })->sum('masse_horaire');
+        
+        // Check for issues
+        $issues = [];
+        
+        // Check for missing trainers
+        if ($totalFormateurs == 0) {
+            $issues[] = [
+                'type' => 'danger',
+                'message' => 'Aucun formateur n\'est enregistré dans cet établissement',
+                'icon' => 'fa-user-tie'
+            ];
+        }
+        
+        // Check for missing pedagogical spaces
+        if ($totalEspaces == 0) {
+            $issues[] = [
+                'type' => 'danger',
+                'message' => 'Aucun espace pédagogique n\'est enregistré pour cet établissement',
+                'icon' => 'fa-chalkboard'
+            ];
+        }
+        
+        // Check for insufficient teaching hours
+        if ($masseHoraireDisponible < $masseHoraireModules) {
+            $deficit = $masseHoraireModules - $masseHoraireDisponible;
+            $issues[] = [
+                'type' => 'warning',
+                'message' => "Déficit de $deficit heures de formation par rapport aux besoins des modules",
+                'icon' => 'fa-clock'
+            ];
+        }
+        
+        // Check formations for minimum hours (910h/year)
+        $formations = $etablissement->formations()->with('modules')->get();
+        foreach ($formations as $formation) {
+            $totalHours = $formation->modules->sum('masse_horaire');
+            if ($totalHours < 910) {
+                $missingHours = 910 - $totalHours;
+                $issues[] = [
+                    'type' => 'warning',
+                    'message' => "La formation '{$formation->titre}' nécessite {$missingHours}h supplémentaires pour atteindre le minimum annuel de 910h",
+                    'icon' => 'fa-graduation-cap'
+                ];
+            }
+        }
+        
         return [
             'total_formations' => $etablissement->formations()->count(),
             'total_groupes' => Groupe::whereHas('formation', function($query) use ($etablissement) {
@@ -68,14 +131,12 @@ class DashboardEtablissementController extends Controller
             'total_etudiants' => Groupe::whereHas('formation', function($query) use ($etablissement) {
                 $query->where('etablissement_id', $etablissement->id);
             })->sum('effectif'),
-            'total_formateurs' => Formateur::where('etablissement_id', $etablissement->id)->count(),
-            'total_espaces' => EspacePedagogique::where('etablissement_id', $etablissement->id)->count(),
+            'total_formateurs' => $totalFormateurs,
+            'total_espaces' => $totalEspaces,
             'capacite_totale_espaces' => EspacePedagogique::where('etablissement_id', $etablissement->id)->sum('capacite'),
-            'masse_horaire_disponible' => Formateur::where('etablissement_id', $etablissement->id)
-                ->sum('masse_horaire_disponible'),
-            'masse_horaire_modules' => Module::whereHas('formation', function($query) use ($etablissement) {
-                $query->where('etablissement_id', $etablissement->id);
-            })->sum('masse_horaire')
+            'masse_horaire_disponible' => $masseHoraireDisponible,
+            'masse_horaire_modules' => $masseHoraireModules,
+            'issues' => $issues
         ];
     }
 

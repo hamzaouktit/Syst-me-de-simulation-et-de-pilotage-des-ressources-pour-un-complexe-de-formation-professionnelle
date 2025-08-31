@@ -61,7 +61,7 @@ Route::get('/administrationcomplexe/dashboard', [DashboardComplexeController::cl
     ->name('dashboard.complexe');
 
 // Dashboard Établissement
-Route::get('/administrationetablissement/dashboard', [DashboardEtablissementController::class, 'index'])
+Route::get('/administrationetablissement/dashboard/{etablissement?}', [DashboardEtablissementController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard.etablissement');
 

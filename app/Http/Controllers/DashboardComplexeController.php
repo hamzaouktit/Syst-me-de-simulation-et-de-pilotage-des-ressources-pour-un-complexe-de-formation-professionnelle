@@ -7,6 +7,7 @@ use App\Models\Etablissement;
 use App\Models\Formation;
 use App\Models\Groupe;
 use App\Models\User;
+use App\Models\Module;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -46,8 +47,7 @@ class DashboardComplexeController extends Controller
     private function getComplexeStats($complexe)
     {
         $etablissements = $complexe->etablissements;
-        
-        return [
+        $stats = [
             'total_etablissements' => $etablissements->count(),
             'total_formations' => Formation::whereIn('etablissement_id', $etablissements->pluck('id'))->count(),
             'total_groupes' => Groupe::whereHas('formation', function($query) use ($etablissements) {
@@ -59,8 +59,94 @@ class DashboardComplexeController extends Controller
             'directeurs_etablissement' => User::where('role', 'directeur_etablissement')
                 ->whereHas('etablissement', function($query) use ($complexe) {
                     $query->where('complexe_id', $complexe->id);
-                })->count()
+                })->count(),
+            'etablissements_avec_alertes' => 0,
+            'nombre_alertes_critiques' => 0,
+            'nombre_alertes_avertissements' => 0
         ];
+
+        // Check for issues in each establishment
+        $etablissementsAvecAlertes = [];
+        
+        foreach ($etablissements as $etablissement) {
+            $issues = $this->checkEtablissementIssues($etablissement);
+            
+            if (!empty($issues)) {
+                $etablissementsAvecAlertes[] = [
+                    'etablissement' => $etablissement,
+                    'issues' => $issues,
+                    'has_critical' => collect($issues)->contains('type', 'danger'),
+                    'issues_count' => count($issues)
+                ];
+                
+                $stats['etablissements_avec_alertes']++;
+                $stats['nombre_alertes_critiques'] += collect($issues)->where('type', 'danger')->count();
+                $stats['nombre_alertes_avertissements'] += collect($issues)->where('type', 'warning')->count();
+            }
+        }
+        
+        $stats['etablissements_alertes'] = $etablissementsAvecAlertes;
+        
+        return $stats;
+    }
+    
+    /**
+     * Check for issues in an establishment
+     */
+    private function checkEtablissementIssues($etablissement)
+    {
+        $issues = [];
+        
+        // Check for missing trainers
+        $totalFormateurs = $etablissement->formateurs()->count();
+        if ($totalFormateurs == 0) {
+            $issues[] = [
+                'type' => 'danger',
+                'message' => 'Aucun formateur enregistré',
+                'icon' => 'fa-user-tie'
+            ];
+        }
+        
+        // Check for missing pedagogical spaces
+        $totalEspaces = $etablissement->espacesPedagogiques()->count();
+        if ($totalEspaces == 0) {
+            $issues[] = [
+                'type' => 'danger',
+                'message' => 'Aucun espace pédagogique enregistré',
+                'icon' => 'fa-chalkboard'
+            ];
+        }
+        
+        // Check for insufficient teaching hours
+        $masseHoraireDisponible = $etablissement->formateurs()->sum('masse_horaire_disponible');
+        $masseHoraireModules = Module::whereHas('formation', function($query) use ($etablissement) {
+            $query->where('etablissement_id', $etablissement->id);
+        })->sum('masse_horaire');
+        
+        if ($masseHoraireDisponible < $masseHoraireModules) {
+            $deficit = $masseHoraireModules - $masseHoraireDisponible;
+            $issues[] = [
+                'type' => 'warning',
+                'message' => "Déficit de $deficit heures de formation",
+                'icon' => 'fa-clock'
+            ];
+        }
+        
+        // Check formations for minimum hours (910h/year)
+        $formations = $etablissement->formations()->with('modules')->get();
+        foreach ($formations as $formation) {
+            $totalHours = $formation->modules->sum('masse_horaire');
+            if ($totalHours < 910) {
+                $missingHours = 910 - $totalHours;
+                $issues[] = [
+                    'type' => 'warning',
+                    'message' => "Formation '{$formation->titre}': {$missingHours}h manquantes (min 910h/an)",
+                    'icon' => 'fa-graduation-cap'
+                ];
+            }
+        }
+        
+        return $issues;
     }
 
     /**

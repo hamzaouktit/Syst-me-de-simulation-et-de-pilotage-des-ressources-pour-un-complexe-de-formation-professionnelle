@@ -18,14 +18,91 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="dashboard-title">
-                        <i class="fas fa-school text-primary me-3"></i>
-                        Dashboard - {{ $etablissement->nom }}
-                    </h1>
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-map-marker-alt me-2"></i>{{ $etablissement->adresse }}
-                    </p>
+                <div class="d-flex align-items-start">
+                    <div>
+                        <div class="d-flex align-items-center">
+                            <h1 class="dashboard-title mb-0">
+                                <i class="fas fa-school text-primary me-3"></i>
+                                Dashboard - {{ $etablissement->nom }}
+                            </h1>
+                            <div class="ms-3">
+                                <div class="dropdown">
+                                    <button class="notification-bell" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-bell"></i>
+                                        @if(!empty($stats['issues']))
+                                            @php
+                                                $hasCritical = collect($stats['issues'])->contains('type', 'danger');
+                                                $count = count($stats['issues']);
+                                            @endphp
+                                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-{{ $hasCritical ? 'danger' : 'warning' }}" style="font-size: 0.6rem; padding: 0.2em 0.4em;">
+                                                {{ $count }}
+                                            </span>
+                                        @endif
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end p-0 shadow-lg" aria-labelledby="notificationDropdown" style="width: 400px; max-height: 80vh; overflow-y: auto;">
+                                        <li class="dropdown-header bg-light py-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-0">
+                                                    <i class="fas fa-bell me-2"></i>
+                                                    Notifications
+                                                </h6>
+                                                @if(!empty($stats['issues']))
+                                                    @php
+                                                        $criticalCount = collect($stats['issues'])->where('type', 'danger')->count();
+                                                        $warningCount = collect($stats['issues'])->where('type', 'warning')->count();
+                                                    @endphp
+                                                    <div>
+                                                        @if($criticalCount > 0)
+                                                            <span class="badge bg-danger me-1">{{ $criticalCount }} Critique(s)</span>
+                                                        @endif
+                                                        @if($warningCount > 0)
+                                                            <span class="badge bg-warning">{{ $warningCount }} Avertissement(s)</span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </li>
+                                        @if(!empty($stats['issues']))
+                                            @foreach($stats['issues'] as $index => $issue)
+                                            <li>
+                                                <div class="dropdown-item d-flex align-items-start p-3 border-bottom">
+                                                    <div class="me-3">
+                                                        <div class="icon-circle bg-{{ $issue['type'] }}">
+                                                            <i class="fas {{ $issue['icon'] ?? 'fa-info-circle' }} text-white"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <div class="small text-gray-500">{{ now()->format('d/m/Y H:i') }}</div>
+                                                        @php
+                                                            $isCompleted = isset($issue['completed']) && $issue['completed'] === true;
+                                                            $alertClass = $isCompleted ? 'success' : ($issue['type'] === 'warning' ? 'warning' : 'danger');
+                                                        @endphp
+                                                        <span class="text-{{ $alertClass }}">
+                                                            <i class="fas {{ $isCompleted ? 'fa-check-circle' : ($issue['icon'] ?? 'fa-info-circle') }} me-1"></i>
+                                                            {{ $issue['message'] }}
+                                                            @if($isCompleted)
+                                                                <span class="badge bg-{{ $alertClass }} ms-2">100% Complété</span>
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            @endforeach
+                                        @else
+                                            <li class="dropdown-item text-center py-4">
+                                                <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                                                <p class="mb-0">Aucune alerte pour le moment</p>
+                                                <small class="text-muted">Tout semble en ordre</small>
+                                            </li>
+                                        @endif
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0 mt-2">
+                            <i class="fas fa-map-marker-alt me-2"></i>{{ $etablissement->adresse }}
+                        </p>
+                    </div>
                 </div>
                 <div class="dashboard-actions">
                     <div class="btn-group" role="group">
@@ -50,6 +127,76 @@
             </div>
         </div>
     </div>
+
+
+    <style>
+        /* Notification Bell Styles */
+        .notification-bell {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            padding: 0;
+        }
+        
+        .notification-bell:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        }
+        
+        .notification-bell i {
+            font-size: 1.15rem;
+            color: #4a5568;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .notification-bell:hover i {
+            animation: ring 0.5s ease-in-out;
+        }
+        
+        @keyframes ring {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(-15deg); }
+            75% { transform: rotate(10deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .dropdown-menu {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border: none;
+        }
+        .dropdown-item:active {
+            background-color: #f8f9fa;
+        }
+        .text-warning {
+            color: #ffc107 !important;
+        }
+        .text-danger {
+            color: #dc3545 !important;
+        }
+        .text-success {
+            color: #198754 !important;
+        }
+    </style>
 
     {{-- Cartes de statistiques --}}
     <div class="row mb-4">

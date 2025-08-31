@@ -51,6 +51,169 @@
         </div>
     </div>
 
+    {{-- Notification Bell --}}
+    <div class="notification-bell-container">
+        <div class="dropdown">
+            <button class="notification-bell" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-bell"></i>
+                @if($stats['etablissements_avec_alertes'] > 0)
+                    @php
+                        $hasCritical = $stats['nombre_alertes_critiques'] > 0;
+                        $totalAlerts = $stats['nombre_alertes_critiques'] + $stats['nombre_alertes_avertissements'];
+                    @endphp
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-{{ $hasCritical ? 'danger' : 'warning' }}" style="font-size: 0.7rem;">
+                        {{ $totalAlerts }}
+                    </span>
+                @endif
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end p-0 shadow-lg" aria-labelledby="notificationDropdown" style="width: 500px; max-height: 80vh; overflow-y: auto;">
+                <li class="dropdown-header bg-light py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bell me-2"></i>
+                            Alertes des établissements
+                        </h6>
+                        @if($stats['etablissements_avec_alertes'] > 0)
+                            <div>
+                                @if($stats['nombre_alertes_critiques'] > 0)
+                                    <span class="badge bg-danger me-1">{{ $stats['nombre_alertes_critiques'] }} Critique(s)</span>
+                                @endif
+                                @if($stats['nombre_alertes_avertissements'] > 0)
+                                    <span class="badge bg-warning">{{ $stats['nombre_alertes_avertissements'] }} Avertissement(s)</span>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </li>
+                @if($stats['etablissements_avec_alertes'] > 0)
+                    @foreach($stats['etablissements_alertes'] as $etablissementData)
+                    <li>
+                        <div class="dropdown-item p-0">
+                            <div class="d-flex align-items-center p-3 border-bottom">
+                                <div class="me-3">
+                                    <div class="icon-circle bg-{{ $etablissementData['has_critical'] ? 'danger' : 'warning' }}">
+                                        <i class="fas fa-school text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            {{ $etablissementData['etablissement']->nom }}
+                                            <span class="badge bg-{{ $etablissementData['has_critical'] ? 'danger' : 'warning' }} ms-2">
+                                                {{ $etablissementData['issues_count'] }}
+                                            </span>
+                                        </h6>
+                                        <a href="{{ route('dashboard.etablissement', $etablissementData['etablissement']->id) }}" 
+                                           class="btn btn-sm btn-outline-{{ $etablissementData['has_critical'] ? 'danger' : 'warning' }}">
+                                            Voir
+                                        </a>
+                                    </div>
+                                    <div class="mt-2">
+                                        @foreach($etablissementData['issues'] as $issue)
+                                        @php
+                                            $isCompleted = isset($issue['completed']) && $issue['completed'] === true;
+                                            $alertClass = $isCompleted ? 'success' : ($issue['type'] === 'warning' ? 'warning' : 'danger');
+                                            $alertIcon = $isCompleted ? 'fa-check-circle' : ($issue['icon'] ?? 'fa-info-circle');
+                                        @endphp
+                                        <div class="small text-{{ $alertClass }} mb-1">
+                                            <i class="fas {{ $alertIcon }} me-1"></i>
+                                            {{ $issue['message'] }}
+                                            @if($isCompleted)
+                                                <span class="badge bg-{{ $alertClass }} ms-2">100% Complété</span>
+                                            @endif
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    @endforeach
+                @else
+                    <li class="dropdown-item text-center py-4">
+                        <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                        <p class="mb-0">Aucune alerte pour le moment</p>
+                        <small class="text-muted">Tous les établissements sont en ordre</small>
+                    </li>
+                @endif
+            </ul>
+        </div>
+    </div>
+
+    <style>
+        .notification-bell-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        
+        .notification-bell {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            padding: 0;
+        }
+        
+        .notification-bell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .notification-bell i {
+            font-size: 1.25rem;
+            color: #4a5568;
+            transition: transform 0.3s ease;
+        }
+        
+        .notification-bell:hover i {
+            animation: ring 0.5s ease-in-out;
+        }
+        
+        @keyframes ring {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(-15deg); }
+            75% { transform: rotate(10deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .dropdown-menu {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border: none;
+        }
+        .dropdown-item:active {
+            background-color: #f8f9fa;
+        }
+        .text-warning {
+            color: #ffc107 !important;
+        }
+        .text-danger {
+            color: #dc3545 !important;
+        }
+        .text-success {
+            color: #198754 !important;
+        }
+    </style>
+
     {{-- Statistiques générales --}}
     <div class="row mb-4">
         <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
