@@ -53,12 +53,13 @@ class Formation extends Model
     }
 
     /**
-     * Relation avec Module
+     * Relation many-to-many avec Module via la table pivot formation_module
      * Une formation peut avoir plusieurs modules
      */
     public function modules()
     {
-        return $this->hasMany(Module::class);
+        return $this->belongsToMany(Module::class, 'formation_module', 'formation_id', 'module_id')
+                    ->withTimestamps();
     }
 
     /**

@@ -11,16 +11,16 @@ class Module extends Model
 
     protected $fillable = [
         'nom',
-        'masse_horaire',
-        'formation_id'
+        'masse_horaire'
     ];
 
     /**
-     * Relation avec Formation
+     * Relation many-to-many avec Formation via la table pivot formation_module
      */
-    public function formation()
+    public function formations()
     {
-        return $this->belongsTo(Formation::class);
+        return $this->belongsToMany(Formation::class, 'formation_module', 'module_id', 'formation_id')
+                    ->withTimestamps();
     }
 
     /**
@@ -38,5 +38,18 @@ class Module extends Model
     public function metierModules()
     {
         return $this->hasMany(MetierModule::class, 'module_id');
+    }
+
+    /**
+     * Obtenir toutes les formations associées à ce module
+     */
+    public function formationModules()
+    {
+        return $this->hasMany(FormationModule::class, 'module_id');
+    }
+        // Dans le modèle Module
+    public function belongsToEtablissement($etablissementId)
+    {
+        return $this->formations()->where('etablissement_id', $etablissementId)->exists();
     }
 }

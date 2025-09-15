@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Groupe;
 use App\Models\Formation;
 use App\Models\AnneeDeFormation;
+use App\Models\Etablissement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class GroupeController extends Controller
 {
@@ -15,9 +17,19 @@ class GroupeController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Groupe::with(['formation', 'anneeDeFormation']);
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement) {
+            return redirect()->back()->with('error', 'Aucun établissement associé à votre compte.');
+        }
 
-        // Filtrage par formation
+        $query = Groupe::with(['formation', 'anneeDeFormation'])
+            ->whereHas('formation', function ($query) use ($etablissement) {
+                $query->where('etablissement_id', $etablissement->id);
+            });
+
+        // Filtrage par formation (seulement les formations de l'établissement)
         if ($request->filled('formation_id')) {
             $query->where('formation_id', $request->formation_id);
         }
@@ -34,11 +46,13 @@ class GroupeController extends Controller
 
         $groupes = $query->orderBy('nom')->paginate(10);
         
-        // Données pour les filtres
-        $formations = Formation::orderBy('titre')->get();
+        // Données pour les filtres - seulement les formations de l'établissement du directeur
+        $formations = Formation::where('etablissement_id', $etablissement->id)
+            ->orderBy('titre')
+            ->get();
         $annees = AnneeDeFormation::orderBy('annee', 'desc')->get();
 
-        return view('administrationetablissement.groupes.index', compact('groupes', 'formations', 'annees'));
+        return view('administrationetablissement.groupes.index', compact('groupes', 'formations', 'annees', 'etablissement'));
     }
 
     /**
@@ -46,10 +60,20 @@ class GroupeController extends Controller
      */
     public function create()
     {
-        $formations = Formation::orderBy('titre')->get();
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement) {
+            return redirect()->back()->with('error', 'Aucun établissement associé à votre compte.');
+        }
+
+        // Seulement les formations de l'établissement du directeur
+        $formations = Formation::where('etablissement_id', $etablissement->id)
+            ->orderBy('titre')
+            ->get();
         $annees = AnneeDeFormation::orderBy('annee', 'desc')->get();
         
-        return view('administrationetablissement.groupes.create', compact('formations', 'annees'));
+        return view('administrationetablissement.groupes.create', compact('formations', 'annees', 'etablissement'));
     }
 
     /**
@@ -57,6 +81,14 @@ class GroupeController extends Controller
      */
     public function store(Request $request)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement) {
+            return redirect()->back()->with('error', 'Aucun établissement associé à votre compte.');
+        }
+
+        // Validation avec vérification que la formation appartient à l'établissement
         $request->validate([
             'nom' => [
                 'required',
@@ -68,7 +100,16 @@ class GroupeController extends Controller
                     ->where('annee_de_formation_id', $request->annee_de_formation_id)
             ],
             'effectif' => 'required|integer|min:0|max:100',
-            'formation_id' => 'required|exists:formations,id',
+            'formation_id' => [
+                'required',
+                'exists:formations,id',
+                function ($attribute, $value, $fail) use ($etablissement) {
+                    $formation = Formation::find($value);
+                    if ($formation && $formation->etablissement_id != $etablissement->id) {
+                        $fail('Cette formation n\'appartient pas à votre établissement.');
+                    }
+                }
+            ],
             'annee_de_formation_id' => 'required|exists:annees_de_formation,id'
         ], [
             'nom.required' => 'Le nom du groupe est requis.',
@@ -95,8 +136,16 @@ class GroupeController extends Controller
      */
     public function show(Groupe $groupe)
     {
+        // Vérifier que le groupe appartient à l'établissement du directeur
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement || $groupe->formation->etablissement_id != $etablissement->id) {
+            return redirect()->route('administrationetablissement.groupes.index')
+                ->with('error', 'Vous n\'avez pas accès à ce groupe.');
+        }
+
         $groupe->load(['formation', 'anneeDeFormation']);
-        return view('administrationetablissement.groupes.show', compact('groupe'));
+        return view('administrationetablissement.groupes.show', compact('groupe', 'etablissement'));
     }
 
     /**
@@ -104,10 +153,21 @@ class GroupeController extends Controller
      */
     public function edit(Groupe $groupe)
     {
-        $formations = Formation::orderBy('titre')->get();
+        // Vérifier que le groupe appartient à l'établissement du directeur
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement || $groupe->formation->etablissement_id != $etablissement->id) {
+            return redirect()->route('administrationetablissement.groupes.index')
+                ->with('error', 'Vous n\'avez pas accès à ce groupe.');
+        }
+
+        // Seulement les formations de l'établissement du directeur
+        $formations = Formation::where('etablissement_id', $etablissement->id)
+            ->orderBy('titre')
+            ->get();
         $annees = AnneeDeFormation::orderBy('annee', 'desc')->get();
         
-        return view('administrationetablissement.groupes.edit', compact('groupe', 'formations', 'annees'));
+        return view('administrationetablissement.groupes.edit', compact('groupe', 'formations', 'annees', 'etablissement'));
     }
 
     /**
@@ -115,6 +175,15 @@ class GroupeController extends Controller
      */
     public function update(Request $request, Groupe $groupe)
     {
+        // Vérifier que le groupe appartient à l'établissement du directeur
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement || $groupe->formation->etablissement_id != $etablissement->id) {
+            return redirect()->route('administrationetablissement.groupes.index')
+                ->with('error', 'Vous n\'avez pas accès à ce groupe.');
+        }
+
+        // Validation avec vérification que la formation appartient à l'établissement
         $request->validate([
             'nom' => [
                 'required',
@@ -127,7 +196,16 @@ class GroupeController extends Controller
                     ->ignore($groupe->id)
             ],
             'effectif' => 'required|integer|min:0|max:100',
-            'formation_id' => 'required|exists:formations,id',
+            'formation_id' => [
+                'required',
+                'exists:formations,id',
+                function ($attribute, $value, $fail) use ($etablissement) {
+                    $formation = Formation::find($value);
+                    if ($formation && $formation->etablissement_id != $etablissement->id) {
+                        $fail('Cette formation n\'appartient pas à votre établissement.');
+                    }
+                }
+            ],
             'annee_de_formation_id' => 'required|exists:annees_de_formation,id'
         ], [
             'nom.required' => 'Le nom du groupe est requis.',
@@ -154,6 +232,14 @@ class GroupeController extends Controller
      */
     public function destroy(Groupe $groupe)
     {
+        // Vérifier que le groupe appartient à l'établissement du directeur
+        $etablissement = $this->getEtablissementDirecteur();
+        
+        if (!$etablissement || $groupe->formation->etablissement_id != $etablissement->id) {
+            return redirect()->route('administrationetablissement.groupes.index')
+                ->with('error', 'Vous n\'avez pas accès à ce groupe.');
+        }
+
         try {
             $groupe->delete();
             
@@ -164,5 +250,42 @@ class GroupeController extends Controller
             return redirect()->route('administrationetablissement.groupes.index')
                 ->with('error', 'Erreur lors de la suppression du groupe.');
         }
+    }
+
+    /**
+     * Récupère l'établissement du directeur connecté
+     */
+    private function getEtablissementDirecteur()
+    {
+        $user = Auth::user();
+        
+        if (!$user) {
+            return null;
+        }
+
+        // Si le user a une relation directe avec un établissement
+        if (method_exists($user, 'etablissement')) {
+            return $user->etablissement;
+        }
+
+        // Sinon, chercher l'établissement via une table pivot ou une autre relation
+        // Vous devrez adapter cette partie selon votre structure de base de données
+        // Par exemple, si vous avez une table user_etablissement :
+        /*
+        return Etablissement::whereHas('users', function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        })->first();
+        */
+
+        // Ou si vous avez un champ etablissement_id dans la table users :
+        /*
+        if ($user->etablissement_id) {
+            return Etablissement::find($user->etablissement_id);
+        }
+        */
+
+        // Pour l'instant, je retourne le premier établissement (à adapter)
+        // IMPORTANT: Vous devez modifier cette méthode selon votre structure de données
+        return Etablissement::first();
     }
 }

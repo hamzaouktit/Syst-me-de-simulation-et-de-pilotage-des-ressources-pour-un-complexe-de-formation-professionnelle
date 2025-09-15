@@ -6,7 +6,9 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title">Gestion des Groupes</h3>
+                    <h3 class="card-title">
+                        Gestion des Groupes - {{ $etablissement->nom ?? 'Établissement' }}
+                    </h3>
                     <a href="{{ route('administrationetablissement.groupes.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nouveau Groupe
                     </a>
@@ -72,6 +74,16 @@
                         </div>
                     @endif
 
+                    <!-- Info établissement -->
+                    @if(isset($etablissement))
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-building"></i>
+                            <strong>Établissement :</strong> {{ $etablissement->nom }}
+                            <br>
+                            <small>Vous ne pouvez gérer que les groupes de votre établissement</small>
+                        </div>
+                    @endif
+
                     <!-- Tableau -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
@@ -132,7 +144,7 @@
                                     <tr>
                                         <td colspan="7" class="text-center text-muted py-4">
                                             <i class="fas fa-users fa-3x mb-3"></i>
-                                            <p>Aucun groupe trouvé</p>
+                                            <p>Aucun groupe trouvé pour votre établissement</p>
                                         </td>
                                     </tr>
                                 @endforelse

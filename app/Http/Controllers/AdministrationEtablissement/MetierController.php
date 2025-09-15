@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdministrationEtablissement;
 use App\Http\Controllers\Controller;
 use App\Models\Metier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class MetierController extends Controller
 {
@@ -13,8 +14,18 @@ class MetierController extends Controller
      */
     public function index(Request $request)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
         // Construction de la requête de base
-        $query = Metier::query();
+        // Filtrer seulement les métiers associés aux modules des formations de cet établissement
+        $query = Metier::whereHas('modules.formations', function($q) use ($etablissement) {
+            $q->where('etablissement_id', $etablissement->id);
+        });
 
         // Recherche par nom
         if ($request->filled('search_nom')) {
@@ -47,6 +58,13 @@ class MetierController extends Controller
      */
     public function create()
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
         return view('administrationetablissement.metiers.create');
     }
 
@@ -55,6 +73,13 @@ class MetierController extends Controller
      */
     public function store(Request $request)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
         $request->validate([
             'nom' => 'required|string|max:255|unique:metiers,nom',
             'description' => 'nullable|string'
@@ -75,7 +100,38 @@ class MetierController extends Controller
      */
     public function show(Metier $metier)
     {
-        $metier->load(['formateurs', 'modules']);
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
+        // Vérifier que le métier est associé à au moins un module de formation de cet établissement
+        $metierEtablissement = $metier->modules()
+            ->whereHas('formations', function($q) use ($etablissement) {
+                $q->where('etablissement_id', $etablissement->id);
+            })
+            ->exists();
+
+        if (!$metierEtablissement) {
+            abort(403, 'Ce métier ne fait pas partie de votre établissement.');
+        }
+
+        // Charger seulement les formateurs et modules liés à cet établissement
+        $metier->load([
+            'formateurs' => function($query) use ($etablissement) {
+                $query->whereHas('etablissement', function($q) use ($etablissement) {
+                    $q->where('id', $etablissement->id);
+                });
+            },
+            'modules' => function($query) use ($etablissement) {
+                $query->whereHas('formations', function($q) use ($etablissement) {
+                    $q->where('etablissement_id', $etablissement->id);
+                });
+            }
+        ]);
+
         return view('administrationetablissement.metiers.show', compact('metier'));
     }
 
@@ -84,6 +140,24 @@ class MetierController extends Controller
      */
     public function edit(Metier $metier)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
+        // Vérifier que le métier est associé à au moins un module de formation de cet établissement
+        $metierEtablissement = $metier->modules()
+            ->whereHas('formations', function($q) use ($etablissement) {
+                $q->where('etablissement_id', $etablissement->id);
+            })
+            ->exists();
+
+        if (!$metierEtablissement) {
+            abort(403, 'Ce métier ne fait pas partie de votre établissement.');
+        }
+
         return view('administrationetablissement.metiers.edit', compact('metier'));
     }
 
@@ -92,6 +166,24 @@ class MetierController extends Controller
      */
     public function update(Request $request, Metier $metier)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
+        // Vérifier que le métier est associé à au moins un module de formation de cet établissement
+        $metierEtablissement = $metier->modules()
+            ->whereHas('formations', function($q) use ($etablissement) {
+                $q->where('etablissement_id', $etablissement->id);
+            })
+            ->exists();
+
+        if (!$metierEtablissement) {
+            abort(403, 'Ce métier ne fait pas partie de votre établissement.');
+        }
+
         $request->validate([
             'nom' => 'required|string|max:255|unique:metiers,nom,' . $metier->id,
             'description' => 'nullable|string'
@@ -112,7 +204,27 @@ class MetierController extends Controller
      */
     public function destroy(Metier $metier)
     {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
+        // Vérifier que le métier est associé à au moins un module de formation de cet établissement
+        $metierEtablissement = $metier->modules()
+            ->whereHas('formations', function($q) use ($etablissement) {
+                $q->where('etablissement_id', $etablissement->id);
+            })
+            ->exists();
+
+        if (!$metierEtablissement) {
+            abort(403, 'Ce métier ne fait pas partie de votre établissement.');
+        }
+
         try {
+            // Attention: Cette suppression pourrait affecter d'autres établissements
+            // Il serait peut-être mieux de dissocier le métier des modules de cet établissement seulement
             $metier->delete();
             return redirect()->route('administrationetablissement.metiers.index')
                             ->with('success', 'Métier supprimé avec succès.');
@@ -120,5 +232,33 @@ class MetierController extends Controller
             return redirect()->route('administrationetablissement.metiers.index')
                             ->with('error', 'Impossible de supprimer ce métier car il est utilisé.');
         }
+    }
+
+    /**
+     * Méthode alternative pour dissocier un métier des modules de l'établissement au lieu de le supprimer
+     */
+    public function detachFromEtablissement(Metier $metier)
+    {
+        // Récupérer l'établissement du directeur connecté
+        $etablissement = Auth::user()->etablissement;
+        
+        if (!$etablissement) {
+            abort(403, 'Vous n\'êtes pas associé à un établissement.');
+        }
+
+        // Récupérer tous les modules de cet établissement associés au métier
+        $modules = $metier->modules()
+            ->whereHas('formations', function($q) use ($etablissement) {
+                $q->where('etablissement_id', $etablissement->id);
+            })
+            ->get();
+
+        // Dissocier le métier de ces modules
+        foreach ($modules as $module) {
+            $module->metiers()->detach($metier->id);
+        }
+
+        return redirect()->route('administrationetablissement.metiers.index')
+                        ->with('success', 'Métier dissocié des modules de votre établissement.');
     }
 }

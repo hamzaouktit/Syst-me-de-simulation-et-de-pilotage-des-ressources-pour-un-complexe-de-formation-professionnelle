@@ -23,6 +23,20 @@
                 </div>
             </div>
 
+            <!-- Info établissement -->
+            @if(isset($etablissement))
+                <div class="row justify-content-center mb-3">
+                    <div class="col-lg-8">
+                        <div class="alert alert-info">
+                            <i class="fas fa-building"></i>
+                            <strong>Établissement :</strong> {{ $etablissement->nom }}
+                            <br>
+                            <small>Vous modifiez un groupe de votre établissement</small>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Formulaire de modification -->
             <div class="row justify-content-center">
                 <div class="col-lg-8">
@@ -195,6 +209,8 @@
                                         <strong>Formation :</strong> {{ $groupe->formation->titre }} | 
                                         <strong>Année :</strong> {{ $groupe->anneeDeFormation->annee }} | 
                                         <strong>Effectif :</strong> {{ $groupe->effectif }} étudiant(s)
+                                        <br>
+                                        <strong>Établissement :</strong> {{ $groupe->formation->etablissement->nom ?? 'N/A' }}
                                     </div>
                                 </div>
                                 <div class="col-auto">

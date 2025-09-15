@@ -71,7 +71,9 @@ class DashboardEtablissementController extends Controller
         $totalEspaces = EspacePedagogique::where('etablissement_id', $etablissement->id)->count();
         $masseHoraireDisponible = Formateur::where('etablissement_id', $etablissement->id)
             ->sum('masse_horaire_disponible');
-        $masseHoraireModules = Module::whereHas('formation', function($query) use ($etablissement) {
+        
+        // CORRECTION: Utiliser 'formations' au lieu de 'formation'
+        $masseHoraireModules = Module::whereHas('formations', function($query) use ($etablissement) {
             $query->where('etablissement_id', $etablissement->id);
         })->sum('masse_horaire');
         
@@ -125,7 +127,8 @@ class DashboardEtablissementController extends Controller
             'total_groupes' => Groupe::whereHas('formation', function($query) use ($etablissement) {
                 $query->where('etablissement_id', $etablissement->id);
             })->count(),
-            'total_modules' => Module::whereHas('formation', function($query) use ($etablissement) {
+            // CORRECTION: Utiliser 'formations' au lieu de 'formation'
+            'total_modules' => Module::whereHas('formations', function($query) use ($etablissement) {
                 $query->where('etablissement_id', $etablissement->id);
             })->count(),
             'total_etudiants' => Groupe::whereHas('formation', function($query) use ($etablissement) {
@@ -198,7 +201,7 @@ class DashboardEtablissementController extends Controller
                 ];
             })->toArray();
 
-        // Évolution mensuelle des inscriptions (exemple avec données fictives)
+        // Évolution mensuelle des inscriptions
         $evolutionInscriptions = $this->getEvolutionInscriptions($etablissement);
 
         return [
@@ -211,42 +214,39 @@ class DashboardEtablissementController extends Controller
     }
 
     /**
-     * Get enrollment evolution (placeholder - you may need to track this data)
+     * Get enrollment evolution for the establishment
      */
-    /**
- * Get enrollment evolution for the establishment
- */
-private function getEvolutionInscriptions($etablissement)
-{
-    // Get the last 6 months of enrollment data
-    $data = DB::table('groupes')
-        ->join('formations', 'groupes.formation_id', '=', 'formations.id')
-        ->where('formations.etablissement_id', $etablissement->id)
-        ->selectRaw('DATE_FORMAT(groupes.created_at, "%b") as month, SUM(groupes.effectif) as inscriptions')
-        ->where('groupes.created_at', '>=', now()->subMonths(6)) // Last 6 months
-        ->groupByRaw('DATE_FORMAT(groupes.created_at, "%b"), YEAR(groupes.created_at), MONTH(groupes.created_at)')
-        ->orderByRaw('YEAR(groupes.created_at), MONTH(groupes.created_at)')
-        ->get()
-        ->map(function ($item) {
-            return [
-                'month' => $item->month, // Short month name (e.g., Jan, Feb)
-                'inscriptions' => (int) $item->inscriptions // Total students enrolled
-            ];
-        })->toArray();
+    private function getEvolutionInscriptions($etablissement)
+    {
+        // Get the last 6 months of enrollment data
+        $data = DB::table('groupes')
+            ->join('formations', 'groupes.formation_id', '=', 'formations.id')
+            ->where('formations.etablissement_id', $etablissement->id)
+            ->selectRaw('DATE_FORMAT(groupes.created_at, "%b") as month, SUM(groupes.effectif) as inscriptions')
+            ->where('groupes.created_at', '>=', now()->subMonths(6))
+            ->groupByRaw('DATE_FORMAT(groupes.created_at, "%b"), YEAR(groupes.created_at), MONTH(groupes.created_at)')
+            ->orderByRaw('YEAR(groupes.created_at), MONTH(groupes.created_at)')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'month' => $item->month,
+                    'inscriptions' => (int) $item->inscriptions
+                ];
+            })->toArray();
 
-    // Ensure all months in the last 6 months are included, even if no data
-    $months = collect(range(0, 5))->map(function ($i) {
-        return now()->subMonths($i)->format('M'); // Short month name
-    })->reverse()->values()->unique()->toArray();
+        // Ensure all months in the last 6 months are included
+        $months = collect(range(0, 5))->map(function ($i) {
+            return now()->subMonths($i)->format('M');
+        })->reverse()->values()->unique()->toArray();
 
-    $result = [];
-    foreach ($months as $month) {
-        $found = collect($data)->firstWhere('month', $month) ?? ['month' => $month, 'inscriptions' => 0];
-        $result[] = $found;
+        $result = [];
+        foreach ($months as $month) {
+            $found = collect($data)->firstWhere('month', $month) ?? ['month' => $month, 'inscriptions' => 0];
+            $result[] = $found;
+        }
+
+        return $result;
     }
-
-    return $result;
-}
 
     /**
      * Get recent activities for the etablissement
@@ -303,7 +303,6 @@ private function getEvolutionInscriptions($etablissement)
             ];
         }
 
-        // Trier par timestamp décroissant et limiter à 10
         return collect($activities)
             ->sortByDesc('timestamp')
             ->take(10)
@@ -323,7 +322,7 @@ private function getEvolutionInscriptions($etablissement)
             return response()->json(['error' => 'Aucun établissement associé'], 404);
         }
 
-        $period = $request->get('period', 'month'); // week, month, year
+        $period = $request->get('period', 'month');
         
         $stats = [
             'formations_stats' => $this->getFormationsStats($etablissement, $period),
@@ -381,7 +380,7 @@ private function getEvolutionInscriptions($etablissement)
         }
 
         $format = $request->get('format', 'pdf');
-        $type = $request->get('type', 'summary'); // summary, detailed, formations, etc.
+        $type = $request->get('type', 'summary');
         
         switch ($format) {
             case 'pdf':
@@ -396,12 +395,10 @@ private function getEvolutionInscriptions($etablissement)
     private function exportToPdf($etablissement, $type)
     {
         // Implémentation de l'export PDF
-        // Vous devrez installer et configurer une librairie comme DomPDF
     }
 
     private function exportToExcel($etablissement, $type)
     {
         // Implémentation de l'export Excel
-        // Vous devrez installer et configurer Laravel Excel
     }
 }

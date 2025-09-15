@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('nom');
             $table->integer('masse_horaire');
-            $table->foreignId('formation_id')->constrained('formations')->onDelete('cascade');
             $table->timestamps();
         });
     }

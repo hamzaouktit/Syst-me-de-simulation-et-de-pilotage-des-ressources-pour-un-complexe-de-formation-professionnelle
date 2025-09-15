@@ -119,7 +119,9 @@ class DashboardComplexeController extends Controller
         
         // Check for insufficient teaching hours
         $masseHoraireDisponible = $etablissement->formateurs()->sum('masse_horaire_disponible');
-        $masseHoraireModules = Module::whereHas('formation', function($query) use ($etablissement) {
+        
+        // CORRECTION: Utiliser 'formations' au lieu de 'formation'
+        $masseHoraireModules = Module::whereHas('formations', function($query) use ($etablissement) {
             $query->where('etablissement_id', $etablissement->id);
         })->sum('masse_horaire');
         
@@ -209,17 +211,24 @@ class DashboardComplexeController extends Controller
             return response()->json(['activities' => []]);
         }
 
-        // Ici vous pouvez implémenter la logique pour récupérer les activités récentes
-        // Par exemple, les dernières formations créées, groupes ajoutés, etc.
-        $activities = [
-            // Exemple de structure
-            [
+        // Exemple d'activités récentes - vous pouvez adapter selon vos besoins
+        $activities = [];
+        
+        // Récupérer les dernières formations créées dans le complexe
+        $recentFormations = Formation::whereIn('etablissement_id', $complexe->etablissements->pluck('id'))
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->with('etablissement')
+            ->get();
+            
+        foreach ($recentFormations as $formation) {
+            $activities[] = [
                 'type' => 'formation_created',
-                'message' => 'Nouvelle formation créée',
-                'timestamp' => now()->subHours(2),
-                'etablissement' => 'Nom de l\'établissement'
-            ]
-        ];
+                'message' => "Formation '{$formation->titre}' créée à {$formation->etablissement->nom}",
+                'timestamp' => $formation->created_at,
+                'etablissement' => $formation->etablissement->nom
+            ];
+        }
 
         return response()->json(['activities' => $activities]);
     }
@@ -238,7 +247,6 @@ class DashboardComplexeController extends Controller
 
         $format = $request->get('format', 'pdf');
         
-        // Logique d'export selon le format demandé
         switch ($format) {
             case 'pdf':
                 return $this->exportToPdf($complexe);

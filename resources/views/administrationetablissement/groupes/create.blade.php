@@ -17,6 +17,20 @@
                 </a>
             </div>
 
+            <!-- Info établissement -->
+            @if(isset($etablissement))
+                <div class="row justify-content-center mb-3">
+                    <div class="col-lg-8">
+                        <div class="alert alert-info">
+                            <i class="fas fa-building"></i>
+                            <strong>Établissement :</strong> {{ $etablissement->nom }}
+                            <br>
+                            <small>Vous créez un groupe pour votre établissement uniquement</small>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- Formulaire de création -->
             <div class="row justify-content-center">
                 <div class="col-lg-8">
@@ -48,11 +62,13 @@
                                             @error('nom')
                                                 <div class="invalid-feedback">
                                                     <i class="fas fa-exclamation-circle"></i> {{ $message }}
-                                                    <small class="form-text text-muted">
+                                                </div>
+                                            @enderror
+                                            
+                                            <small class="form-text text-muted">
                                                 <i class="fas fa-info-circle"></i> 
                                                 Le nom doit être unique pour cette formation et cette année.
                                             </small>
-                                            @enderror
                                         </div>
                                     </div>
 
@@ -108,6 +124,13 @@
                                                     <i class="fas fa-exclamation-circle"></i> {{ $message }}
                                                 </div>
                                             @enderror
+                                            
+                                            @if($formations->isEmpty())
+                                                <small class="form-text text-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                    Aucune formation disponible pour votre établissement
+                                                </small>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -140,9 +163,15 @@
 
                                 <!-- Boutons d'action -->
                                 <div class="form-group text-center mt-4">
-                                    <button type="submit" class="btn btn-primary mr-2">
-                                        <i class="fas fa-save"></i> Enregistrer
-                                    </button>
+                                    @if(!$formations->isEmpty())
+                                        <button type="submit" class="btn btn-primary mr-2">
+                                            <i class="fas fa-save"></i> Enregistrer
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-primary mr-2" disabled title="Aucune formation disponible">
+                                            <i class="fas fa-save"></i> Enregistrer
+                                        </button>
+                                    @endif
                                     <a href="{{ route('administrationetablissement.groupes.index') }}" 
                                        class="btn btn-secondary">
                                         <i class="fas fa-times"></i> Annuler
